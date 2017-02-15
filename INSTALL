@@ -1,0 +1,21 @@
+Steps to install HoneyDB:
+
+1. Run "build.sh"
+
+2. Inside LXC Container named "db-server", do following:
+    (i) Login as a root using mysql-client
+    (ii) Install "MariaDB Audit Plugin" using following command:
+        --> INSTALL PLUGIN server_audit SONAME 'server_audit';
+    (iii) Change the content of "/etc/mysql/my.cnf" with available "my.cnf" in this repo
+    (iv) Comment out the "bind-address = 127.0.0.1" part in "/etc/mysql/mariadb.conf.d/50-server.cnf" file, so that root user can be remotely accessible.
+    (v) Restart your mysql service using "service mysql restart"
+    **Now all the logs will be logged in /var/log/mysql/audit.log file in Container**
+
+3. Add port forwarding rules in your HOST system using following commands of IPTABLES:
+    Notation: Y- HOST System
+              Z- Container System
+
+    -->iptables -t nat -A PREROUTING -p tcp -i eth0 -d Y.Y.Y.Y --dport 3306 -j DNAT --to Z.Z.Z.Z:3306
+    -->iptables -A FORWARD -p tcp -i eth0 -d Z.Z.Z.Z --dport 3306 -j ACCEPT
+
+4. Happy Hacking!!
