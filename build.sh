@@ -31,21 +31,62 @@ then
   fi
 fi
 
-python3 --version
+lxc-stop -n db-server
+lxc-start -n db-server
 
 if [ $? -ne 0 ]
 then
-  aptitude install python3 python3-pip -y
-fi
-
-aptitude install python3-lxc -y
-
-python3 lxc-script.py
-
-if [ $? -ne 0 ]
-then
-  echo "[*] Error in Python Script!!\n"
+  echo "[*] Error in Container Starting\n"
   exit
 fi
+
+lxc-attach -n db-server -- apt-get update
+
+if [ $? -ne 0 ]
+then
+  echo "[*] Error in lxc-attach (apt-get update)!!\n"
+  exit
+fi
+
+lxc-attach -n db-server -- apt-get install aptitude -y
+
+if [ $? -ne 0 ]
+then
+  echo "[*] Error in lxc-attach (apt-get install aptitude -y)!!\n"
+    exit
+fi
+
+lxc-attach -n db-server -- aptitude install debconf-utils -y
+
+if [ $? -ne 0 ]
+then
+  echo "[*] Error in lxc-attach (aptitude install debconf-utils -y)!!\n"
+    exit
+fi
+
+lxc-attach -n db-server -- debconf-set-selections <<< 'mariadb-server mariadb-server/root_password password n0tActualD13'
+
+if [ $? -ne 0 ]
+then
+  echo "[*] Error in lxc-attach (debconf-set-selections <<< 'mariadb-server mariadb-server/root_password password n0tActualD13')!!\n"
+    exit
+fi
+
+lxc-attach -n db-server -- debconf-set-selections <<< 'mariadb-server mariadb-server/root_password_again password n0tActualD13'
+
+if [ $? -ne 0 ]
+then
+  echo "[*] Error in lxc-attach (debconf-set-selections <<< 'mariadb-server mariadb-server/root_password_again password n0tActualD13')!!\n"
+    exit
+fi
+
+lxc-attach -n db-server -- aptitude install mariadb-server -y
+
+if [ $? -ne 0 ]
+then
+  echo "[*] Error in lxc-attach (aptitude install mariadb-server -y)!!\n"
+    exit
+fi
+
 
 echo "[*] Successfully Build"
