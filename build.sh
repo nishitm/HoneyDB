@@ -6,83 +6,35 @@ then
   exit
 fi
 
-lxc-ls
-
+docker -v
 if [ $? -ne 0 ]
 then
-  aptitude install lxc lxc-templates lxc-dev lxc-common -y
+  aptitude install docker.io -y
+else
+  echo "[*] Docker Already Installed"
 fi
 
-lxc-create -t ubuntu -n db-server
+ip=
+while [[ $ip = "" ]]; do
+read -p "Enter IP address to which you want to bind your mysql server: "  ip
+done
 
-if [ $? -ne 0 ]
-then
-  echo "[*] ERROR in lxc-create!!"
-  echo "[*] Trying to re-create if exist"
-  aptitude install debootstrap -y
-  lxc-create -t ubuntu -n db-server
-  lxc-info -n db-server
-  if [ $? -ne 0 ]
-  then
-    echo "[*] Container not exist" 
-    exit
-  else
-    lxc-stop -n db-server
-    lxc-destroy -n db-server
-    lxc-create -t ubuntu -n db-server
-  fi
-fi
-sleep 5
-lxc-stop -n db-server
-sleep 5
-lxc-start -n db-server
+mkdir logs
 
-if [ $? -ne 0 ]
-then
-  echo "[*] Error in Container Starting"
-  exit
-fi
+docker run --name SQLi-mysql -v `pwd`/logs:/home/logs -e MYSQL_ROOT_PASSWORD=root --publish $ip:3306:3306 -d mariadb:latest
 
-sleep 5
-lxc-attach -n db-server -- apt-get install aptitude -y
+docker exec SQLi-mysql chown mysql:adm /home/logs
 
-if [ $? -ne 0 ]
-then
-  echo "[*] Error in lxc-attach (apt-get install aptitude -y)!!"
-    exit
-fi
+sleep 60
+ip=$(echo "$ip" | xargs)
 
-lxc-attach -n db-server -- aptitude install debconf-utils -y
+mysql -u root -proot -h $ip -P 3306 -e 'use mysql;source sqli.sql;'
 
-if [ $? -ne 0 ]
-then
-  echo "[*] Error in lxc-attach (aptitude install debconf-utils -y)!!"
-    exit
-fi
+docker cp my.cnf SQLi-mysql:/etc/mysql/
 
-lxc-attach -n db-server -- debconf-set-selections <<< 'mariadb-server mariadb-server/root_password password n0tActualD13'
+docker exec SQLi-mysql mkdir /usr/share/mysql/en_US
+docker exec SQLi-mysql cp /usr/share/mysql/english/errmsg.sys /usr/share/mysql/en_US/errmsg.sys
 
-if [ $? -ne 0 ]
-then
-  echo "[*] Error in lxc-attach (debconf-set-selections <<< 'mariadb-server mariadb-server/root_password password n0tActualD13')!!"
-    exit
-fi
-
-lxc-attach -n db-server -- debconf-set-selections <<< 'mariadb-server mariadb-server/root_password_again password n0tActualD13'
-
-if [ $? -ne 0 ]
-then
-  echo "[*] Error in lxc-attach (debconf-set-selections <<< 'mariadb-server mariadb-server/root_password_again password n0tActualD13')!!"
-    exit
-fi
-
-lxc-attach -n db-server -- aptitude install mariadb-server -y
-
-if [ $? -ne 0 ]
-then
-  echo "[*] Error in lxc-attach (aptitude install mariadb-server -y)!!"
-    exit
-fi
-
+docker restart SQLi-mysql
 
 echo "[*] Successfully Build"
