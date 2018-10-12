@@ -14,21 +14,21 @@ else
   echo "[*] Docker Already Installed"
 fi
 
-ip=
-while [[ $ip = "" ]]; do
-read -p "Enter IP address to which you want to bind your mysql server: "  ip
+IP=
+while [[ $IP = "" ]]; do
+read -p "Enter IP address to which you want to bind your mysql server: "  IP
 done
 
 mkdir logs
 
-docker run --name SQLi-mysql -v `pwd`/logs:/home/logs -e MYSQL_ROOT_PASSWORD=root --publish $ip:3306:3306 -d mariadb:latest
+docker run --name SQLi-mysql -v `pwd`/logs:/home/logs -e MYSQL_ROOT_PASSWORD=root --publish $IP:3306:3306 -d mariadb:latest
 
 docker exec SQLi-mysql chown mysql:adm /home/logs
 
 sleep 60
-ip=$(echo "$ip" | xargs)
+IP=$(echo "$IP" | xargs)
 
-mysql -u root -proot -h $ip -P 3306 -e 'use mysql;source sqli.sql;'
+mysql -u root -proot -h $IP -P 3306 -e 'use mysql;source sqli.sql;'
 
 docker cp my.cnf SQLi-mysql:/etc/mysql/
 
